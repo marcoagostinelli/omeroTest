@@ -27,8 +27,6 @@ directory = 'IF'
 htd = HTD_practice.constructHTDInfo("Plate35Plcg2.HTD")
 
 pattern = '(.+)_([A-Z]\d+)_(s\d+)_(w\d+)'
-word = "plate333w_Q22_s22_w43"
-match = re.match(pattern,word)
 
 #This function returns a json that holds all possible wells/wavelengths/sites. Used for determining incomplet or missing wells
 def getAllWells(htd):
