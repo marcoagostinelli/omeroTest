@@ -115,6 +115,7 @@ def getImages(directory,regex):
                             #TODO find out new filename
                             "newFilename": filename,
                             "filePath" : directory,
+                            "Platename" : plateName,
                             "wellId" : well,
                             "siteId" : site,
                             "waveLengthId" : wavelength
@@ -127,6 +128,7 @@ def getImages(directory,regex):
                         #TODO find out new filename
                         "newFilename" : filename,
                         "filePath" : directory,
+                        "Platename" : plateName,
                         "wellId" : well,
                         "siteId" : site,
                         "waveLengthId" : wavelength
