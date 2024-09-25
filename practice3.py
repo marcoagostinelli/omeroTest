@@ -152,6 +152,61 @@ def createOrAddToWell(siteNum,plateId,imageId,row,col):
 
                 createWellSample(well,imageId)
 
+# creates a screen and plate for our images if they have not been created yet. returns the current screen Id
+def createScreenAndPlate(conn,directory):
+    #create a list of plate names
+    screenId = ""
+    screens = []
+    for screen in conn.getObjects("screen", opts={'name':directory}):
+        screens.append(screen.getName())
+    if directory not in screens:
+        screenId = ezomero.post_screen(conn, directory)
+    else:
+        for screen in conn.getObjects("screen", opts={'name': directory}):
+                screenId = screen.getId()
+
+    #Create a list of plate names
+    for plate in conn.getObjects("plate",opts={'screen':screenId}):
+        plateNames.append(plate.getName())
+
+    return screenId
+
+# checks verifys if each image has been added to a site in a well. If not, then it adds the image
+# siteCount: number of sites used in a well. images: the list of images being used
+def addSitesToWells(siteCount,images):
+    imageList = []
+    #separate the images by _
+    for image in images:
+        x = image.split("_")
+        imageList.append(x)
+
+    #we will add the images in site 1 first, then site 2...
+    for i in range(1,siteCount+1):
+        for image in imageList:
+            if int(image[2][1:]) == i:
+                #if the plate has not been created yet on OMERO, we must create it
+                if image[0] not in plateNames:
+                    createPlate(image[0],screenId)
+                    plateNames.append(image[0])
+
+                #get current plate id
+                plateId = ""
+                for plate in conn.getObjects("plate",attributes={'name':image[0]},opts={'screen':screenId}):
+                    plateId = plate.getId()
+
+                #get current image id
+                imageId = ""
+                serverImages = conn.getObjects("Image", attributes={"name": image[0]+"_"+image[1]+"_"+image[2]+"_"+image[3]})
+                for serverImage in serverImages:
+                    imageId = serverImage.getId()
+
+                #get well coords
+                row,col = getWellCoords(image[1])
+
+                #if the site doesnt exist already,create or add to well
+                if not checkIfSiteIsSet(i,plateId,row-1,col-1):
+                    createOrAddToWell(i,plateId,imageId,row-1,col-1)
+
 
 
 conn = ezomero.connect("root","omero_root_p4ss", host="192.168.56.56", port="4064", secure=True)
@@ -160,56 +215,9 @@ update_service = conn.getUpdateService()
 
 images = createProject(conn,"Testing Project","Testing Database")
 
+screenId = createScreenAndPlate(conn,directory)
 
-#create a screen for all the data if it hasn't been created yet
-screenId = ""
-screens = []
-for screen in conn.getObjects("screen", opts={'name':directory}):
-    screens.append(screen.getName())
-if directory not in screens:
-    screenId = ezomero.post_screen(conn, directory)
-else:
-    for screen in conn.getObjects("screen", opts={'name': directory}):
-            screenId = screen.getId()
-
-#Create a list of plate names
-for plate in conn.getObjects("plate",opts={'screen':screenId}):
-    plateNames.append(plate.getName())
-
-imageList = []
-#separate the images by _
-for image in images:
-    x = image.split("_")
-    imageList.append(x)
-
-#we will add the images in site 1 first, then site 2...
-for i in range(1,int(htd['sites'])+1):
-    for image in imageList:
-        if int(image[2][1:]) == i:
-            #if the plate has not been created yet on OMERO, we must create it
-            if image[0] not in plateNames:
-                createPlate(image[0],screenId)
-                plateNames.append(image[0])
-
-            #get current plate id
-            plateId = ""
-            for plate in conn.getObjects("plate",attributes={'name':image[0]},opts={'screen':screenId}):
-                plateId = plate.getId()
-
-            #get current image id
-            imageId = ""
-            serverImages = conn.getObjects("Image", attributes={"name": image[0]+"_"+image[1]+"_"+image[2]+"_"+image[3]})
-            for serverImage in serverImages:
-                imageId = serverImage.getId()
-
-            #get well coords
-            row,col = getWellCoords(image[1])
-
-            #if the site doesnt exist already,create or add to well
-            if not checkIfSiteIsSet(i,plateId,row-1,col-1):
-                createOrAddToWell(i,plateId,imageId,row-1,col-1)
-
+addSitesToWells(int(htd['sites']),images)
 
         
-
 conn.close()
