@@ -1,5 +1,7 @@
 import os
+import json
 import HTD_practice
+from regexTest import getImages
 import ezomero.json_api
 import omero.clients
 import ezomero
@@ -24,7 +26,7 @@ from omero.rtypes import rint, rlong, rstring, robject, unwrap
 
 
 #the file containing the images
-directory = "IF"
+directory = "/root/omero/IF"
 
 # a list to hold all plate names
 plateNames = []
@@ -67,15 +69,32 @@ def uploadImage(directory,projId,dataId):
     #create a list of existing image names
     for image in conn.getObjects("image"):
         images.append(image.getName())
-    for filename in os.listdir(directory):
-        #Check image if it doesnt exist
-        if filename not in images:
-            #TODO add rejects ex: *_(letter)(num)(num)_s(num)_(w)(num).TIF
-            #Check if image is validated
-            wellId = filename.split("_")[1]
-            if wellId in htd["wells"]:
-                file_path = os.path.join(directory, filename)
-                ezomero.ezimport(conn,file_path,projId,dataId)
+
+    #create a list of valid image names, store them in a dictionary so they can be easily referenced
+    valid, refused = getImages(directory)
+    valid = dict(valid)
+    validImages = []
+    
+    #get all the filenames that are valid
+    for well in valid:
+        for wavelength in valid[well]:
+            for site in valid[well][wavelength]["Sites"]:
+                validImages.append(valid[well][wavelength]["Sites"][site]["filename"])
+    #if our valid image is not in the existing list of images, upload it
+    for image in validImages:
+        if image not in images:
+            file_path = os.path.join(directory, image)
+            ezomero.ezimport(conn,file_path,projId,dataId)
+
+    # for filename in os.listdir(directory):
+    #     #Check image if it doesnt exist
+    #     if filename not in images:
+    #         #TODO add rejects ex: *_(letter)(num)(num)_s(num)_(w)(num).TIF
+    #         #Check if image is validated
+    #         wellId = filename.split("_")[1]
+    #         if wellId in htd["wells"]:
+    #             file_path = os.path.join(directory, filename)
+    #             ezomero.ezimport(conn,file_path,projId,dataId)
 
 
 
