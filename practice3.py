@@ -31,13 +31,10 @@ directory = "/root/omero/IF"
 # a list to hold all plate names
 plateNames = []
 
-# a list to hold all image names
-images = []
-
 # set the HTD file that is being used in this project
 htd = HTD_practice.constructHTDInfo("Plate35Plcg2.HTD")
 
-#Create a project with a database to store the images of a specific file
+#Create a project with a database to store the images of a specific file, returns list of all images after uploading
 def createProject(conn,projName,dataName):
     projId = ""
     dataId = ""
@@ -62,10 +59,11 @@ def createProject(conn,projName,dataName):
         for data in conn.getObjects("dataset", opts={'name':dataName}):
             dataId = data.getId()
 
-    uploadImage(directory,projId, dataId)
+    return uploadImage(directory,projId, dataId)
 
 # checks if an image is validated and does not exist before uploading it. Uploads image to specific dataset and project
 def uploadImage(directory,projId,dataId):
+    images = []
     #create a list of existing image names
     for image in conn.getObjects("image"):
         images.append(image.getName())
@@ -85,18 +83,7 @@ def uploadImage(directory,projId,dataId):
         if image not in images:
             file_path = os.path.join(directory, image)
             ezomero.ezimport(conn,file_path,projId,dataId)
-
-    # for filename in os.listdir(directory):
-    #     #Check image if it doesnt exist
-    #     if filename not in images:
-    #         #TODO add rejects ex: *_(letter)(num)(num)_s(num)_(w)(num).TIF
-    #         #Check if image is validated
-    #         wellId = filename.split("_")[1]
-    #         if wellId in htd["wells"]:
-    #             file_path = os.path.join(directory, filename)
-    #             ezomero.ezimport(conn,file_path,projId,dataId)
-
-
+    return validImages
 
 #create a plate for a specific screen
 def createPlate(name, screenId):
@@ -168,10 +155,11 @@ def createOrAddToWell(siteNum,plateId,imageId,row,col):
 
 
 conn = ezomero.connect("root","omero_root_p4ss", host="192.168.56.56", port="4064", secure=True)
-conn.connect()
 
-createProject(conn,"Testing Project","Testing Database")
 update_service = conn.getUpdateService()
+
+images = createProject(conn,"Testing Project","Testing Database")
+
 
 #create a screen for all the data if it hasn't been created yet
 screenId = ""
@@ -196,7 +184,6 @@ for image in images:
 
 #we will add the images in site 1 first, then site 2...
 for i in range(1,int(htd['sites'])+1):
-
     for image in imageList:
         if int(image[2][1:]) == i:
             #if the plate has not been created yet on OMERO, we must create it
