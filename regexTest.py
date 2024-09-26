@@ -21,12 +21,12 @@ from omero.model import WellSampleI
 from omero.model import ScreenPlateLinkI
 from omero.rtypes import rint, rlong, rstring, robject, unwrap
 
-directory = 'IF'
+directory = '/root/omero/IF'
 
 # set the HTD file that is being used in this project
 htd = HTD_practice.constructHTDInfo("Plate35Plcg2.HTD")
 
-pattern = '(.+)_([A-Z]\d+)_(s\d+)_(w\d+)'
+#pattern = '(.+)_([A-Z]\d+)_(s\d+)_(w\d+)'
 
 #This function returns a json that holds all possible wells/wavelengths/sites. Used for determining incomplet or missing wells
 def getAllWells(htd):
@@ -69,18 +69,22 @@ def subtractJson(all,used):
                     del all[well]
     return all
 
+# checks if an image is in the correct format. Returns the image if true
+def checkName(filename):
+    regex = "(.+)_([A-Z]\d+)_(s\d+)_(w\d+)"
+    return re.match(regex,filename)
 
 
 
 
 #matches every image in a folder to a regex and adds each part to the valid or refused JSON object
-def getImages(directory,regex):
+def getImages(directory):
     validImages = {}
     refusedImages = {}
 
     for filename in os.listdir(directory):
         # verify the name matches the regex
-        match = re.match(regex,filename)
+        match = checkName(filename)
         #(plateName_well_site_wavelength)
         if match:
             plateName, well, site, wavelength = match.groups()
@@ -137,7 +141,7 @@ def getImages(directory,regex):
 
             
 
-validWells,invalidWells = getImages(directory,pattern)
+validWells,invalidWells = getImages(directory)
 allWells = getAllWells(htd)
 
 incompleteWellsJson = open("incomplete.json", "w")
