@@ -1,27 +1,6 @@
-import os
-import ezomero.json_api
-import omero.clients
-import ezomero
-import omero.gateway
-import omero.model
-import omero.scripts as scripts
-import omero
 import json
-from omero.gateway import BlitzGateway
-from omero.gateway import DatasetWrapper
-from omero.gateway import ScreenWrapper
-from omero.gateway import PlateWrapper
-from omero.model import ScreenI
-from omero.model import PlateI
-from omero.model import WellI
-from omero.model import ImageI
-from omero.model import WellSampleI
-from omero.model import ScreenPlateLinkI
-from omero.rtypes import rint, rlong, rstring, robject, unwrap
 
 # This program will collect info from a HTD file
-
-fileLocation = "Plate35Plcg2.HTD"
 
 def parseContents(file):
     data = {}
@@ -90,6 +69,7 @@ def getWells(jsonFile):
     return wells
 
 # Constructs a json file based on a given HTD file
+# (This is the function we will be calling)
 def constructHTDInfo(fileLocation):
     #writes HTD data to a json object for processing
     data = HTD_to_JSON(fileLocation)
@@ -106,13 +86,8 @@ def constructHTDInfo(fileLocation):
         info['sites'] = int(data.get("XSites")) * int(data.get("YSites"))
     else:
         info['sites'] = 1
-    
-    jsonFile = open("testing.json", 'w')
-    json.dump(info, jsonFile, indent=4)
     return info
 
-info = constructHTDInfo(fileLocation)
-print("D02" in info['wells'])
 
 
 
