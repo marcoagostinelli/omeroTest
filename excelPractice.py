@@ -1,0 +1,177 @@
+import sys
+import os
+import pandas as pd
+import xlwings as xw
+from HTD_practice import constructHTDInfo
+from regexTest import getImages
+from regexTest import getIncompleteWells
+from regexTest import getValidImageNames
+#TODO uncomment this line when omero is installed on python
+#from regexTest import checkName
+import re
+
+# maximum file name length
+MAX_NAME = 255
+# TODO: replace \\ with os.path.sep
+def truncate_name(dirs, max=MAX_NAME):
+    """Construct new file name from the end to the front until it exceeds MAX_NAME.
+
+     Args:
+        dirs: list of directory names ["tag1", "tag2", ..., "tagN", file].
+        max: integer maximum length for file name.
+     Returns:
+        String: file name shorter than MAX_NAME
+    """
+    new_filename = os.path.sep.join(dirs)
+    length = len(new_filename)
+    num_split = 1
+    while length > max:
+        # split off front num_split directories
+        split = new_filename.split(os.path.sep, num_split)
+        length = len(split[-1])
+        num_split += 1
+    new_filename = split[-1]
+    return new_filename
+
+def walk_files(root, extensions):
+    """Navigates each file and folder beginning at the root folder and checks for image files.
+
+    Args:
+        root: path of the root project folder.
+        extensions: list of string image file extensions.
+    Yields:
+        Yields file name and file path of each image file found.
+    Raises:
+    """
+    for dirpath, dirnames, files in os.walk(root, topdown=True):
+        for file in files:
+            filename, extension = os.path.splitext(file)
+            if extension in extensions:
+                filepath = os.path.join(dirpath, file)
+                # get accompanying json file
+                json = None
+                for f in os.listdir(dirpath):
+                    name, ext = os.path.splitext(f)
+                    if (ext == ".json") and (name.lower().count(file.lower()) > 0):
+                        json = f
+                yield (file, filepath, json)
+    
+
+
+def create_DataFrame(root,valid, extensions, columns=["File Name","New File Name","File Path","MMA File Path","Plate Name", "Well ID", "Site ID", "Wavelength ID"]):
+    """Create a DataFrame containing image file info for the root directory.
+
+    DataFrame will contain file name, new file name constructed by replacing backslashes in filepath
+    with underscores, file path, MMA file path for the accompanying json file path, and tags which are the root directories subdirectories seperated by hashtags.
+
+     Args:
+        root: path to a dataset directory continaing subdirectories and image files.
+        valid: a list of valid image names. Only images in this list will be added to the excel file
+        extensions: list of string image file extensions.
+        columns: column names used to create the DataFrame and CSV output.
+     Returns:
+        A DataFrame containing information written to the output csv file.
+     Catches:
+        ValueError: catches value error from walk_files() if encountering a path longer than MAX_NAME characters
+    """
+    df = pd.DataFrame(columns=columns)
+    walk = walk_files(root, extensions)
+    for file, filepath, json in walk:
+
+        #check if the image is valid before adding it to the excel file
+        if file in valid:
+            #TODO use this function when testing on a machine with omero installed in python
+            #match = checkName(file)   
+
+            #TODO remove this line when omero is installed on python
+            match = re.match("(.+)_([A-Z]\d+)_(s\d+)_(w\d+)",file)
+
+            platename, wellId, siteId, wavelengthId = match.groups()
+
+            # seperate the directories in the path from the ending file
+            dirpath = os.path.dirname(filepath)
+
+            # remove the root part of the dirname
+            dirpath = dirpath.replace(root, "", 1)
+
+            # split dirpath into list of directories
+            dirs = []
+            while 1:
+                head, tail = os.path.split(dirpath)
+                dirs.insert(0, tail)
+                dirpath = head
+                if (head == "") or (head == os.path.sep): # head=="" is first level file, head==os.path.sep is second or greater level file
+                    break
+
+            dirs.append(file)
+
+            # join directories with "_"
+            new_filename = "_".join(dirs)
+
+            # truncate file name if too long
+            if len(new_filename) > MAX_NAME:
+                new_filename = truncate_name(dirs)
+
+            # add row to the DataFrame
+            row = pd.DataFrame([[file, new_filename, filepath, json, platename, wellId, siteId, wavelengthId]], columns=columns)
+            df = df._append(row, ignore_index=True)
+        
+    df.sort_values(by="File Name", inplace=True)
+    return df
+
+
+# NOTE: : doesn't close file after writing
+def write_excel(file, df, sheet_number=2, cell="A14"):
+    """Write DataFrame to an existing excel file on a specific sheet starting at a specific cell.
+
+     Args:
+        file: string file name.
+        df: DataFrame table to write.
+        sheet_number: integer zero-indexed index number of the sheet to write on.
+        cell: cell to write DataFrame to.
+     Returns:
+        None
+     Raises:
+    """
+    wb = xw.Book(file)
+    sheet = wb.sheets[sheet_number]
+    sheet[cell].options(index=False, header=False).value = df
+    wb.save(file)
+
+# If present, returns the important HTD data in a dictionary
+# location: folder location that will be searched
+def getHtdFile(location):
+    for file in os.listdir(location):
+        filename, extension = os.path.splitext(file)
+        if extension == ".HTD":
+            return constructHTDInfo(os.path.join(location, file))
+
+
+
+
+# MAIN
+def main():
+
+    excel = "Pazour_OMERO_import_template_wMacros_v06.xlsm"
+    directory = "IF"
+    extensions = [".TIF"]
+
+    #get htd file
+    htd = getHtdFile(directory)
+
+    #using the htd file, get dictionary of valid and refused images. Retreive incomplete wells too
+    validImages,rejectedImages = getImages(directory,htd)
+    incomplete = getIncompleteWells(htd, validImages)
+
+    #TODO add error if there is something in rejectedImages or incomplete.
+    if rejectedImages or incomplete:
+        print("error")
+
+    #get list of image names to be displayed on excel file
+    validImageNames = getValidImageNames(validImages)
+
+    df = create_DataFrame(directory,validImageNames,extensions)
+    write_excel(excel,df)
+
+if __name__ == "__main__":
+    main()

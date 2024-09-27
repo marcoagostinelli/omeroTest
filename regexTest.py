@@ -1,30 +1,8 @@
 import os
 import HTD_practice
-import ezomero.json_api
-import omero.clients
-import ezomero
-import omero.gateway
-import omero.model
-import omero.scripts as scripts
-import omero
 import re
 import json
-from omero.gateway import BlitzGateway
-from omero.gateway import DatasetWrapper
-from omero.gateway import ScreenWrapper
-from omero.gateway import PlateWrapper
-from omero.model import ScreenI
-from omero.model import PlateI
-from omero.model import WellI
-from omero.model import ImageI
-from omero.model import WellSampleI
-from omero.model import ScreenPlateLinkI
-from omero.rtypes import rint, rlong, rstring, robject, unwrap
 
-directory = '/root/omero/IF'
-
-# set the HTD file that is being used in this project
-htd = HTD_practice.constructHTDInfo("Plate35Plcg2.HTD")
 
 #pattern = '(.+)_([A-Z]\d+)_(s\d+)_(w\d+)'
 
@@ -71,14 +49,15 @@ def subtractJson(all,used):
 
 # checks if an image is in the correct format. Returns the image if true
 def checkName(filename):
-    regex = "(.+)_([A-Z]\d+)_(s\d+)_(w\d+)"
+    regex = "(.+)_([A-Z]\d+)_(s\d+)_(w\d+).TIF"
     return re.match(regex,filename)
 
 
 
 
 #matches every image in a folder to a regex and adds each part to the valid or refused JSON object
-def getImages(directory):
+#htd: the htd dictionary that is being used
+def getImages(directory,htd):
     validImages = {}
     refusedImages = {}
 
@@ -139,17 +118,41 @@ def getImages(directory):
                     }          
     return validImages, refusedImages
 
+#get all wells that are incomplete within a HTD object
+# htd: the htd file dictionary
+# validWells: the dictionary containing all valid wells
+def getIncompleteWells(htd,validWells):
+    allWells = getAllWells(htd)
+    incompleteWells = subtractJson(allWells,validWells)
+    return incompleteWells
+
+#takes the valid image dictionary and returns a list containing every image name
+def getValidImageNames(validImages):
+    imageList = []
+    for well in validImages:
+        for wavelength in validImages[well]:
+            for site in validImages[well][wavelength]["Sites"]:
+                imageList.append(validImages[well][wavelength]["Sites"][site]["filename"])
+    return imageList
+
             
+def main():
+    # set the HTD file that is being used in this project
+    htd = HTD_practice.constructHTDInfo("Plate35Plcg2.HTD")
+    directory = '/root/omero/IF'
 
-validWells,invalidWells = getImages(directory)
-allWells = getAllWells(htd)
+    validWells,invalidWells = getImages(directory,htd)
 
-incompleteWellsJson = open("incomplete.json", "w")
-validJson = open("valid.json", 'w')
-refusedJson = open("refused.json","w")
+    incompleteWellsJson = open("incomplete.json", "w")
+    validJson = open("valid.json", 'w')
+    refusedJson = open("refused.json","w")
 
-json.dump(validWells, validJson, indent=4)
-json.dump(invalidWells, refusedJson, indent=4)
-#subtract valid wells from all wells to get incomplete wells
-incompleteWells = subtractJson(allWells,validWells)
-json.dump(incompleteWells,incompleteWellsJson, indent=4)
+    json.dump(validWells, validJson, indent=4)
+    json.dump(invalidWells, refusedJson, indent=4)
+
+    #subtract valid wells from all wells to get incomplete wells
+    incompleteWells = getIncompleteWells(htd,validWells)
+    json.dump(incompleteWells,incompleteWellsJson, indent=4)
+
+if __name__ == "__main__":
+    main()
