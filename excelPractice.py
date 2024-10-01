@@ -138,6 +138,29 @@ def write_excel(file, df, sheet_number=2, cell="A14"):
     sheet[cell].options(index=False, header=False).value = df
     wb.save(file)
 
+def read_excel(file, dataset_sheet=1, image_list_sheet=2, dataset_cell="C10", image_list_cell="B10"):
+    """Read an excel file and extract dataset folder name and image file extensions from specific cells.
+
+     Args:
+        file: excel file.
+        dataset_sheet: integer zero-indexed index number of the sheet containing dataset_cell.
+        image_list_sheet: integer zero-indexed index number of the sheet containing image_list_cell.
+        dataset_cell: string cell id of cell containing name of dataset flder.
+        image_list_cell: string cell id of cell containing list of image file extensions.
+     Returns:
+        A tuple of (string dataset folder name, list of string image file extensions).
+     Raises:
+    """
+    wb = xw.Book(file)
+    sheet = wb.sheets[dataset_sheet]
+    cell = sheet[dataset_cell]
+    dataset = cell.value.strip()
+    sheet = wb.sheets[image_list_sheet]
+    cell = sheet[image_list_cell]
+    extensions = cell.value
+    extensions = extensions.split(" ")
+    return (dataset, extensions)
+
 # If present, returns the important HTD data in a dictionary
 # location: folder location that will be searched
 def getHtdFile(location):
@@ -154,7 +177,8 @@ def main():
 
     excel = "Pazour_OMERO_import_template_wMacros_v06.xlsm"
     directory = "IF"
-    extensions = [".TIF"]
+    dataset, extensions = read_excel(excel)
+    print(extensions[1])
 
     #get htd file
     htd = getHtdFile(directory)
