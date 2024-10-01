@@ -69,7 +69,7 @@ def uploadImage(directory,projId,dataId):
         images.append(image.getName())
 
     #create a list of valid image names, store them in a dictionary so they can be easily referenced
-    valid, refused = getImages(directory)
+    valid, refused = getImages(directory,htd)
     valid = dict(valid)
     validImages = []
     
