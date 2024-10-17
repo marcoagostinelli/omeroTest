@@ -137,9 +137,10 @@ def getValidImageNames(validImages):
 
             
 def main():
+    directory = '/root/omero/IF/'    
     # set the HTD file that is being used in this project
-    htd = HTD_practice.constructHTDInfo("Plate35Plcg2.HTD")
-    directory = '/root/omero/IF'
+    htd = HTD_practice.getHtdFile(directory)
+
 
     validWells,invalidWells = getImages(directory,htd)
 

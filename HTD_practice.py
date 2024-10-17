@@ -1,4 +1,5 @@
 import json
+import os
 
 # This program will collect info from a HTD file
 
@@ -88,6 +89,13 @@ def constructHTDInfo(fileLocation):
         info['sites'] = 1
     return info
 
+# If present, returns the important HTD data in a dictionary
+# location: folder location that will be searched
+def getHtdFile(location):
+    for file in os.listdir(location):
+        filename, extension = os.path.splitext(file)
+        if extension == ".HTD":
+            return constructHTDInfo(os.path.join(location, file))
 
 
 

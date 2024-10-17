@@ -2,7 +2,7 @@ import sys
 import os
 import pandas as pd
 import xlwings as xw
-from HTD_practice import constructHTDInfo
+from HTD_practice import getHtdFile
 from regexTest import getImages
 from regexTest import getIncompleteWells
 from regexTest import getValidImageNames
@@ -160,16 +160,6 @@ def read_excel(file, dataset_sheet=1, image_list_sheet=2, dataset_cell="C10", im
     extensions = cell.value
     extensions = extensions.split(" ")
     return (dataset, extensions)
-
-# If present, returns the important HTD data in a dictionary
-# location: folder location that will be searched
-def getHtdFile(location):
-    for file in os.listdir(location):
-        filename, extension = os.path.splitext(file)
-        if extension == ".HTD":
-            return constructHTDInfo(os.path.join(location, file))
-
-
 
 
 # MAIN
