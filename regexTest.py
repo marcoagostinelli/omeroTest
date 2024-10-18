@@ -30,7 +30,6 @@ def getAllWells(htd):
 #leaving us with only the incomplete wells
 def subtractJson(all,used):
     for well in used:
-        print(well)
         #if the well is used, check if all wavelengths are there
         for wavelength in used[well]:
             
@@ -239,8 +238,8 @@ def main():
     json.dump(invalidWells, refusedJson, indent=4)
 
     #TODO add timepoint and zStep to incomplete json
-    #subtract valid wells from all wells to get incomplete wells
-    incompleteWells = getIncompleteWells(htd,validWells)
+    # #subtract valid wells from all wells to get incomplete wells
+    # incompleteWells = getIncompleteWells(htd,validWells)
     # json.dump(incompleteWells,incompleteWellsJson, indent=4)
 
 if __name__ == "__main__":
