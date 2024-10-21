@@ -265,10 +265,12 @@ def getIncompleteWells(htd,validWells):
 #takes the valid image dictionary and returns a list containing every image name
 def getValidImageNames(validImages):
     imageList = []
-    for well in validImages:
-        for wavelength in validImages[well]:
-            for site in validImages[well][wavelength]["Sites"]:
-                imageList.append(validImages[well][wavelength]["Sites"][site]["filename"])
+    for timepoint in validImages:
+        for zstep in validImages[timepoint]:
+            for well in validImages[timepoint][zstep]:
+                for wavelength in validImages[timepoint][zstep][well]:
+                    for site in validImages[timepoint][zstep][well][wavelength]["Sites"]:
+                        imageList.append(validImages[timepoint][zstep][well][wavelength]["Sites"][site]["filename"])
     return imageList
 
             
