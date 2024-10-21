@@ -4,47 +4,61 @@ import re
 import json
 
 
-#pattern = '(.+)_([A-Z]\d+)_(s\d+)_(w\d+)'
-
 #This function returns a json that holds all possible wells/wavelengths/sites. Used for determining incomplet or missing wells
 def getAllWells(htd):
     allWells = {}
-
     # number of sites in htd file
     siteCount = list(range(1,htd['sites']+1))
     # number of waves in htd file
     waveCount = htd['wavelength']['number']
-    
 
-    #populate the complete list of wells
-    for well in htd['wells']:
-        allWells[well] = {}
-        for i in range(waveCount):
-            allWells[well]["w"+str(i+1)] = {
-                "Name": htd['wavelength']['names'][i],
-                "Sites" : list(siteCount)
-            }
+    for i in range(1,htd['TimePoints']+1):
+        timepoint = "TimePoint_"+str(i)
+        allWells[timepoint] = {}
+        for j in range(1,htd['ZSteps']+1):
+            zStep = "ZStep_"+str(j)
+            allWells[timepoint][zStep] = {}
+
+            #populate the complete list of wells
+            for well in htd['wells']:
+                allWells[timepoint][zStep][well] = {}
+                for i in range(waveCount):
+                    allWells[timepoint][zStep][well]["w"+str(i+1)] = {
+                        "Name": htd['wavelength']['names'][i],
+                        "Sites" : list(siteCount)
+                    }
+
     return allWells
 
 #This is used to remove all used wells from the list of total wells, 
 #leaving us with only the incomplete wells
 def subtractJson(all,used):
-    for well in used:
-        #if the well is used, check if all wavelengths are there
-        for wavelength in used[well]:
-            
-            #if the wavelength is used, check if all sites are there
-            for site in used[well][wavelength]['Sites']:
-                if (site in used[well][wavelength]['Sites']):
-                    all[well][wavelength]['Sites'].remove(site)
-                
-                #if the wavelength is now empty, remove it
-                if not all[well][wavelength]['Sites']:
-                    del all[well][wavelength]
-                
-                #now, if the well is empty, remove it
-                if not all[well]:
-                    del all[well]
+    for timepoint in used:
+        for zStep in used[timepoint]:
+            for well in used[timepoint][zStep]:
+            #if the well is used, check if all wavelengths are there
+                for wavelength in used[timepoint][zStep][well]:
+                #if the wavelength is used, check if all sites are there
+                    for site in used[timepoint][zStep][well][wavelength]['Sites']:
+                        #remove site
+                        if (site in used[timepoint][zStep][well][wavelength]['Sites']):
+                            all[timepoint][zStep][well][wavelength]['Sites'].remove(site)
+
+                        #if the wavelength is now empty, remove it
+                        if not all[timepoint][zStep][well][wavelength]['Sites']:
+                            del all[timepoint][zStep][well][wavelength]
+                        
+                        #if the well is now empty, remove it
+                        if not all[timepoint][zStep][well]:
+                            del all[timepoint][zStep][well]
+                        
+                        #if the zStep is now empty, remove it
+                        if not all[timepoint][zStep]:
+                            del all[timepoint][zStep]
+                        
+                        #if the timepoint is now empty, remove it
+                        if not all[timepoint]:
+                            del all[timepoint]
     return all
 
 # checks if an image is in the correct format. Returns the image if true
@@ -91,7 +105,10 @@ def getImages(directory,htd):
                 for timepointFileName in os.listdir(itemPath):
                     timepointFilePath = os.path.join(itemPath, timepointFileName)
                     if os.path.isdir(timepointFilePath):
-                        if timepointFileName.split("_")[0] == 'ZStep':
+                        #find the zstep folder
+                        #however, if the ZStep is 0, then we don't add it
+                        #TODO process Zprojections
+                        if timepointFileName.split("_")[0] == 'ZStep' and int(timepointFileName.split("_")[1]) != 0:
                             ZStep = timepointFileName
                             validImages[timePoint][ZStep] = {}
                             refusedImages[timePoint][ZStep] = {}
@@ -131,10 +148,43 @@ def getImages(directory,htd):
                 refusedImages[timePoint][ZStep] = {}
             
             validImages, refusedImages = readImage(directory,validImages, refusedImages,filename,timePoint,ZStep,htd)  
+    
+    #remove empty timepoints if any
+    validImages = cleanEmptyEntries(validImages)
+    refusedImages = cleanEmptyEntries(refusedImages)
+        
     return validImages, refusedImages
+
+def cleanEmptyEntries(refusedImages):
+    # Collect timepoints and z-steps to delete
+    timepointsToDelete = []
+
+    for timePoint in list(refusedImages.keys()):
+        zstepsToDelete = []
+
+        # Collect empty ZSteps to delete within the current timepoint
+        for ZStep in list(refusedImages[timePoint].keys()):
+            if refusedImages[timePoint][ZStep] == {}:
+                zstepsToDelete.append(ZStep)
+
+        # Delete empty ZSteps after collecting them
+        for ZStep in zstepsToDelete:
+            del refusedImages[timePoint][ZStep]
+
+        # If the entire timepoint is empty, mark it for deletion
+        if refusedImages[timePoint] == {}:
+            timepointsToDelete.append(timePoint)
+
+    # Delete empty timepoints after collecting them
+    for timePoint in timepointsToDelete:
+        del refusedImages[timePoint]
+
+    # Return the cleaned dictionary
+    return refusedImages
 
 # sends an image to the valid or refused json object
 #(valid or refused json objects must already be existing)
+#TODO: check for valid/invalid timepoint and zStep
 def readImage(directory,validImages, refusedImages,filename,timePoint,ZStep,htd):
      # verify the name matches the regex
     match = checkName(filename,htd)
@@ -200,7 +250,7 @@ def readImage(directory,validImages, refusedImages,filename,timePoint,ZStep,htd)
                     "wellId" : well,
                     "siteId" : site,
                     "waveLengthId" : wavelength
-                }    
+                }   
     return validImages, refusedImages  
 
 
@@ -223,7 +273,7 @@ def getValidImageNames(validImages):
 
             
 def main():
-    directory = '/root/omero/dataset3/'    
+    directory = '/root/omero/dataset4/'    
     # set the HTD file that is being used in this project
     htd = HTD_practice.getHtdFile(directory)
 
@@ -238,9 +288,9 @@ def main():
     json.dump(invalidWells, refusedJson, indent=4)
 
     #TODO add timepoint and zStep to incomplete json
-    # #subtract valid wells from all wells to get incomplete wells
-    # incompleteWells = getIncompleteWells(htd,validWells)
-    # json.dump(incompleteWells,incompleteWellsJson, indent=4)
+    #subtract valid wells from all wells to get incomplete wells
+    incompleteWells = getIncompleteWells(htd,validWells)
+    json.dump(incompleteWells,incompleteWellsJson, indent=4)
 
 if __name__ == "__main__":
     main()
