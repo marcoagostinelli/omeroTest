@@ -57,15 +57,16 @@ def getWells(jsonFile):
             #check each well if it is used or not
             check = jsonFile.get("WellsSelection"+str(i+1))[j]
             if check is True:
+                #we start at index 1 instead of 0, that's why we use j+1
                 #get the corresponding letter for our number
                 letter = chr(i + ord('A'))
 
                 num = ""
                 #make sure every number used is at least 2 digits. A1 -> A01
-                if j < 10:
-                    num = str(0) + str(j)
+                if j+1 < 10:
+                    num = str(0) + str(j+1)
                 else:
-                    num = str(j)
+                    num = str(j+1)
                 wells.append(letter+num)
     return wells
 
@@ -87,6 +88,10 @@ def constructHTDInfo(fileLocation):
         info['sites'] = int(data.get("XSites")) * int(data.get("YSites"))
     else:
         info['sites'] = 1
+    
+    #set zSteps, timepoints
+    info['ZSteps'] = int(data.get("ZSteps"))
+    info['TimePoints'] = int(data.get("TimePoints"))
     return info
 
 # If present, returns the important HTD data in a dictionary
