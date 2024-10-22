@@ -130,10 +130,16 @@ def getImages(directory,htd):
 
             #if there are no timepoint folders, then it must be a zstep folder
             elif filename.split("_")[0] == 'ZStep':
+                print(filename)
+                timePoint = "TimePoint_1"
                 ZStep = filename
+                if timePoint not in validImages:
+                    validImages[timePoint] = {}
+                    refusedImages[timePoint] = {}
+                if ZStep not in validImages[timePoint]:
+                    validImages[timePoint][ZStep] = {}
+                    refusedImages[timePoint][ZStep] = {}
 
-                validImages[timePoint][ZStep] = {}
-                refusedImages[timePoint][ZStep] = {}
                 for zstepFileName in os.listdir(itemPath):
                     validImages, refusedImages = readImage(directory,validImages, refusedImages,zstepFileName,timePoint,ZStep,htd)  
 
@@ -250,7 +256,7 @@ def readImage(directory,validImages, refusedImages,filename,timePoint,ZStep,htd)
                     "wellId" : well,
                     "siteId" : site,
                     "waveLengthId" : wavelength
-                }   
+                }
     return validImages, refusedImages  
 
 
@@ -275,7 +281,7 @@ def getValidImageNames(validImages):
 
             
 def main():
-    directory = '/root/omero/dataset4/'    
+    directory = '/root/omero/dataset5/'    
     # set the HTD file that is being used in this project
     htd = HTD_practice.getHtdFile(directory)
 
